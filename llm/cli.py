@@ -2990,7 +2990,7 @@ def embed(
         fragments = resolve_fragments(db, [fragment], allow_attachments=False)
         if len(fragments) != 1:
             raise click.ClickException(f"Fragment {fragment} returned more than one fragment, but only one is supported for the embed command")
-        content = fragments[0]
+        content = cast(Fragment, fragments[0])
 
     # Resolve input text
     if not content and not fragment:
