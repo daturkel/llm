@@ -2914,8 +2914,24 @@ def uninstall(packages, yes):
     type=click.Choice(["json", "blob", "base64", "hex"]),
     help="Output format",
 )
+@click.option(
+    "fragment",
+    "--fragment",
+    multiple=False,
+    help="Fragment (alias, URL, hash or file path) to embed",
+)
 def embed(
-    collection, id, input, model, store, database, content, binary, metadata, format_
+    collection,
+    id,
+    input,
+    model,
+    store,
+    database,
+    content,
+    binary,
+    metadata,
+    format_,
+    fragment,
 ):
     """Embed text and store or return the result"""
     if collection and not id:
@@ -2923,6 +2939,9 @@ def embed(
 
     if store and not collection:
         raise click.ClickException("Must provide collection when using --store")
+
+    if fragment and content:
+        raise click.ClickException("Must provide either content or fragment but not both")
 
     # Lazy load this because we do not need it for -c or -i versions
     def get_db():
@@ -2933,6 +2952,7 @@ def embed(
 
     collection_obj = None
     model_obj = None
+    db = None
     if collection:
         db = get_db()
         if Collection.exists(db, collection):
@@ -2964,8 +2984,16 @@ def embed(
     if collection and (format_ is None):
         show_output = False
 
+    if fragment:
+        if db is None:
+            db = get_db()
+        fragments = resolve_fragments(db, [fragment], allow_attachments=False)
+        if len(fragments) != 1:
+            raise click.ClickException(f"Fragment {fragment} returned more than one fragment, but only one is supported for the embed command")
+        content = fragments[0]
+
     # Resolve input text
-    if not content:
+    if not content and not fragment:
         if not input or input == "-":
             # Read from stdin
             input_source = sys.stdin.buffer if binary else sys.stdin
